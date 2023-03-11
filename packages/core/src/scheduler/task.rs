@@ -14,13 +14,17 @@ use std::task::Waker;
 /// once a Task has been completed.
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TaskId(pub usize);
+pub struct TaskId {
+    pub(crate) entry: usize,
+    sequence: usize,
+}
 
 /// the task itself is the waker
 pub(crate) struct LocalTask {
     pub scope: ScopeId,
     pub(super) task: RefCell<Pin<Box<dyn Future<Output = ()> + 'static>>>,
     pub waker: Waker,
+    sequence: usize,
 }
 
 impl Scheduler {
@@ -35,13 +39,19 @@ impl Scheduler {
     /// will only occur when the VirtuaalDom itself has been dropped.
     pub fn spawn(&self, scope: ScopeId, task: impl Future<Output = ()> + 'static) -> TaskId {
         let mut tasks = self.tasks.borrow_mut();
+        let sequence = self.sequence.get().overflowing_add(1).0;
+        self.sequence.set(sequence);
 
         let entry = tasks.vacant_entry();
-        let task_id = TaskId(entry.key());
+        let task_id = TaskId {
+            entry: entry.key(),
+            sequence,
+        };
 
         let task = LocalTask {
             task: RefCell::new(Box::pin(task)),
             scope,
+            sequence,
             waker: futures_util::task::waker(Arc::new(LocalTaskHandle {
                 id: task_id,
                 tx: self.sender.clone(),
@@ -61,7 +71,14 @@ impl Scheduler {
     ///
     /// This does not abort the task, so you'll want to wrap it in an aborthandle if that's important to you
     pub fn remove(&self, id: TaskId) {
-        self.tasks.borrow_mut().try_remove(id.0);
+        self.tasks.borrow_mut().try_remove(id.entry);
+    }
+
+    pub fn has(&self, id: TaskId) -> bool {
+        self.tasks
+            .borrow()
+            .get(id.entry)
+            .map_or(false, |local| local.sequence == id.sequence)
     }
 }
 

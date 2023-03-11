@@ -23,7 +23,8 @@ pub(crate) enum SchedulerMsg {
     SuspenseNotified(SuspenseId),
 }
 
-use std::{cell::RefCell, rc::Rc};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 pub(crate) struct Scheduler {
     pub sender: futures_channel::mpsc::UnboundedSender<SchedulerMsg>,
@@ -33,6 +34,8 @@ pub(crate) struct Scheduler {
 
     /// Async components
     pub leaves: RefCell<Slab<SuspenseLeaf>>,
+
+    sequence: Cell<usize>,
 }
 
 impl Scheduler {
@@ -41,6 +44,7 @@ impl Scheduler {
             sender,
             tasks: RefCell::new(Slab::new()),
             leaves: RefCell::new(Slab::new()),
+            sequence: Cell::new(0),
         })
     }
 }

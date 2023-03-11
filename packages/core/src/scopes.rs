@@ -441,6 +441,11 @@ impl<'src> ScopeState {
         self.tasks.remove(id);
     }
 
+    /// Checks if a future is still alive
+    pub fn has_future(&self, id: TaskId) -> bool {
+        self.tasks.has(id)
+    }
+
     /// Take a lazy [`crate::VNode`] structure and actually build it with the context of the efficient [`bumpalo::Bump`] allocator.
     ///
     /// ## Example

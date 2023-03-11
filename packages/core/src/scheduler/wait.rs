@@ -20,7 +20,7 @@ impl VirtualDom {
     pub(crate) fn handle_task_wakeup(&mut self, id: TaskId) {
         let mut tasks = self.scheduler.tasks.borrow_mut();
 
-        let task = match tasks.get(id.0) {
+        let task = match tasks.get(id.entry) {
             Some(task) => task,
             // The task was removed from the scheduler, so we can just ignore it
             None => return,
@@ -35,7 +35,7 @@ impl VirtualDom {
             scope.spawned_tasks.borrow_mut().remove(&id);
 
             // Remove it from the scheduler
-            tasks.try_remove(id.0);
+            tasks.try_remove(id.entry);
         }
     }
 

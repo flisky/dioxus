@@ -139,13 +139,20 @@ impl<T> UseFuture<T> {
     }
 
     /// Get the ID of the future in Dioxus' internal scheduler
-    pub fn task(&self) -> Option<TaskId> {
-        self.task.get()
+    pub fn task(&self, cx: &ScopeState) -> Option<TaskId> {
+        let Some(task_id) = self.task.get() else {
+            return None;
+        };
+        if cx.has_future(task_id) {
+            return Some(task_id);
+        }
+        self.task.take();
+        None
     }
 
     /// Get the current state of the future.
-    pub fn state(&self) -> UseFutureState<T> {
-        match (&self.task.get(), &self.value()) {
+    pub fn state(&self, cx: &ScopeState) -> UseFutureState<T> {
+        match (&self.task(cx), &self.value()) {
             // If we have a task and an existing value, we're reloading
             (Some(_), Some(val)) => UseFutureState::Reloading(val),
 
