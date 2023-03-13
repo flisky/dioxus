@@ -55,7 +55,7 @@ where
         let waker = state.waker.clone();
 
         // Cancel the current future
-        if let Some(current) = state.task.take() {
+        if let Some(current) = state.task(cx) {
             cx.remove_future(current);
         }
 
